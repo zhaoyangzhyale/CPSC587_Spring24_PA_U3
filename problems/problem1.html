@@ -20,7 +20,163 @@
 </head>
 <body>
 <script type="module">
-    import {ThreeEngine} from "../js/utils/utils_three.js";
+    import {ThreeEngine} from "../../js/utils/utils_three.js";
+    import {get_default_lil_gui, refresh_displays} from "../../js/utils/utils_three.js";
+    import {mul_matrix_matrix} from "../../js/utils/utils_math.js";
+    import {transpose} from "../../js/utils/utils_math.js";
+    import {add_matrix_matrix} from "../../js/utils/utils_math.js";
+    import {mul_matrix_scalar} from "../../js/utils/utils_math.js";
+    import {sub_matrix_matrix} from "../../js/utils/utils_math.js";
+    import {frobenius_norm_matrix, identity_matrix} from "../../js/utils/utils_math.js";
+
+    let engine = ThreeEngine.new_default_3d();
+
+    let actions = {
+        reset1: () => {
+            settings.thetaX1 = 0;
+            settings.thetaY1 = 0;
+            settings.thetaZ1 = 0;
+            settings.tx1 = 0;
+            settings.ty1 = 0;
+            settings.tz1 = 0;
+            refresh_displays(gui);
+        },
+        reset2: () => {
+            settings.thetaX2 = 0;
+            settings.thetaY2 = 0;
+            settings.thetaZ2 = 0;
+            settings.tx2 = 0;
+            settings.ty2 = 0;
+            settings.tz2 = 0;
+            refresh_displays(gui);
+        }
+    }
+
+    let settings = {
+        thetaX1: 0,
+        thetaY1: 0,
+        thetaZ1: 0,
+        tx1:0,
+        ty1:0,
+        tz1:0,
+        thetaX2: 0,
+        thetaY2: 0,
+        thetaZ2: 0,
+        tx2:0,
+        ty2:0,
+        tz2:0,
+        distance2: '0'
+    };
+
+    let gui = get_default_lil_gui();
+    gui.add(settings, 'thetaX1', -6.28, 6.28).name('ThetaX1');
+    gui.add(settings, 'thetaY1', -6.28, 6.28).name('ThetaY1');
+    gui.add(settings, 'thetaZ1', -6.28, 6.28).name('ThetaZ1');
+    gui.add(settings, 'tx1', -2, 2).name('tx1');
+    gui.add(settings, 'ty1', -2, 2).name('ty1');
+    gui.add(settings, 'tz1', -2, 2).name('tz1');
+    gui.add(actions, 'reset1');
+    gui.add(settings, 'thetaX2', -6.28, 6.28).name('ThetaX2');
+    gui.add(settings, 'thetaY2', -6.28, 6.28).name('ThetaY2');
+    gui.add(settings, 'thetaZ2', -6.28, 6.28).name('ThetaZ2');
+    gui.add(settings, 'tx2', -2, 2).name('tx2');
+    gui.add(settings, 'ty2', -2, 2).name('ty2');
+    gui.add(settings, 'tz2', -2, 2).name('tz2');
+    gui.add(actions, 'reset2');
+    gui.add(settings, 'distance2').name('disp based dis').disable();
+
+    let x = [[1], [0], [0]];
+    let y = [[0], [1], [0]];
+    let z = [[0], [0], [1]];
+
+    function SE3_distance2(R1, t1, R2, t2) {
+        let R1prime = matrix_inverse_3x3(R1);
+        let t1prime = mul_matrix_matrix(mul_matrix_scalar(R1prime, -1), t1);
+
+        let R = mul_matrix_matrix(R1prime, R2);
+        let Rprime = transpose(R);
+        let RR = sub_matrix_matrix(R, Rprime);
+
+        let trace = R[0][0] + R[1][1] + R[2][2];
+        let beta = math.acos((trace - 1) / 2);
+
+        let a1, a2, a3, a4, a5, a6;
+        let q, r;
+
+        if (beta < 0.0001) {
+            q = 1 / 2 - beta * beta / 24 + beta * beta * beta * beta / 720;
+            r = 1 / 6 - beta * beta / 120 + beta * beta * beta * beta / 5040;
+        } else {
+            q = (1 - math.cos(beta)) / (beta * beta);
+            r = beta - math.sin(beta) / (beta * beta * beta);
+        }
+
+        if (beta < 0.0001) {
+            let k = 1 / 2 + beta * beta / 12 + 7 * beta * beta * beta * beta / 720;
+            a3 = RR[1][0] * k;
+            a2 = RR[0][2] * k;
+            a1 = RR[2][1] * k;
+        } else if (beta == Math.PI) {
+            a3 = Math.PI * math.sqrt(0.5 * (R[2][2] + 1));
+            a2 = Math.PI * math.sqrt(0.5 * (R[1][1] + 1));
+            a1 = Math.PI * math.sqrt(0.5 * (R[0][0] + 1));
+        } else {
+            let k = beta / (2 * math.sin(beta))
+            a3 = RR[1][0] * k;
+            a2 = RR[0][2] * k;
+            a1 = RR[2][1] * k;
+        }
+
+        let A = [[0, -a3, a2], [a3, 0, -a1], [-a2, a1, 0]];
+        let A2 = mul_matrix_matrix(A, A);
+        let B = add_matrix_matrix(add_matrix_matrix(identity_matrix(3), mul_matrix_scalar(A, q)), mul_matrix_scalar(A2, r));
+        
+        let t = add_matrix_matrix(mul_matrix_matrix(R1prime, t2), t1prime);
+        let b = mul_matrix_matrix(matrix_inverse_3x3(B), t);
+        a4 = b[0];
+        a5 = b[1];
+        a6 = b[2];
+
+        return Math.sqrt(Math.pow(a1, 2) + Math.pow(a2, 2) + Math.pow(a3, 2) + Math.pow(a4, 2)+ Math.pow(a5, 2) + Math.pow(a6, 2));
+    }
+
+    engine.animation_loop(function() {
+
+        let Rx1 = [[1, 0, 0], [0, Math.cos(settings.thetaX1), -Math.sin(settings.thetaX1)], [0, Math.sin(settings.thetaX1), Math.cos(settings.thetaX1)]]; // Rotation about x
+        let Ry1 = [[Math.cos(settings.thetaY1), 0, Math.sin(settings.thetaY1)], [0, 1, 0], [-Math.sin(settings.thetaY1), 0, Math.cos(settings.thetaY1)]]; // Rotation about y
+        let Rz1 = [[Math.cos(settings.thetaZ1), -Math.sin(settings.thetaZ1), 0], [Math.sin(settings.thetaZ1), Math.cos(settings.thetaZ1), 0], [0, 0, 1]]; // Rotation about z
+
+        let Rx2 = [[1, 0, 0], [0, Math.cos(settings.thetaX2), -Math.sin(settings.thetaX2)], [0, Math.sin(settings.thetaX2), Math.cos(settings.thetaX2)]]; // Rotation about x
+        let Ry2 = [[Math.cos(settings.thetaY2), 0, Math.sin(settings.thetaY2)], [0, 1, 0], [-Math.sin(settings.thetaY2), 0, Math.cos(settings.thetaY2)]]; // Rotation about y
+        let Rz2 = [[Math.cos(settings.thetaZ2), -Math.sin(settings.thetaZ2), 0], [Math.sin(settings.thetaZ2), Math.cos(settings.thetaZ2), 0], [0, 0, 1]]; // Rotation about z
+
+        let R1 = math.multiply(math.multiply(Rx1, Ry1), Rz1);
+        let R2 = math.multiply(math.multiply(Rx2, Ry2), Rz2);
+
+        let x1 = add_matrix_matrix(mul_matrix_matrix(R1, x), [settings.tx1, settings.ty1, settings.tz1]);
+        let y1 = add_matrix_matrix(mul_matrix_matrix(R1, y), [settings.tx1, settings.ty1, settings.tz1]);
+        let z1 = add_matrix_matrix(mul_matrix_matrix(R1, z), [settings.tx1, settings.ty1, settings.tz1]);
+
+        let x2 = add_matrix_matrix(mul_matrix_matrix(R2, x), [settings.tx2, settings.ty2, settings.tz2]);
+        let y2 = add_matrix_matrix(mul_matrix_matrix(R2, y), [settings.tx2, settings.ty2, settings.tz2]);
+        let z2 = add_matrix_matrix(mul_matrix_matrix(R2, z), [settings.tx2, settings.ty2, settings.tz2]);
+
+        engine.draw_debug_vector([settings.tx1, settings.ty1, settings.tz1], x1, 0.035, undefined, 0xff0000);
+        engine.draw_debug_vector([settings.tx1, settings.ty1, settings.tz1], y1, 0.035, undefined, 0x00ff00);
+        engine.draw_debug_vector([settings.tx1, settings.ty1, settings.tz1], z1, 0.035, undefined, 0x0000ff);
+
+        engine.draw_debug_vector([settings.tx2, settings.ty2, settings.tz2], x2, 0.035, undefined, 0xaa4444);
+        engine.draw_debug_vector([settings.tx2, settings.ty2, settings.tz2], y2, 0.035, undefined, 0x44aa44);
+        engine.draw_debug_vector([settings.tx2, settings.ty2, settings.tz2], z2, 0.035, undefined, 0x4444aa);
+
+        let t1 = [[settings.tx1], [settings.ty1], [settings.tz1]];
+        let t2 = [[settings.tx2], [settings.ty2], [settings.tz2]];
+        let dis2 = SE3_distance2(R1, t1, R2, t2);
+
+        settings.distance2 = dis2.toString();
+
+        refresh_displays(gui);
+    });
 
     // todo: create a visualization that demonstrates your knowledge of displacement-based
     // todo: distance over SE(3).  Note that this will use your logarithm solution from PS_U3,

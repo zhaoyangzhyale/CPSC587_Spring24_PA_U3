@@ -155,7 +155,7 @@ export function mul_matrix_matrix(m1, m2) {
     // console.log(m2);
 
     if (m1[0].length !== m2.length) {
-        throw new Error('Incompatible matrix dimensions');
+        throw new Error('Incompatible matrix dimensions ' + m1[0].length.toString() + ' ' + m2.length.toString());
     }
 
     const result = new Array(m1.length).fill(0).map(() => new Array(m2[0].length).fill(0));
