@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>CPSC 487/587</title>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/lil-gui@0.19.1/dist/lil-gui.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/10.3.0/math.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/quaternion@1.5.1/quaternion.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/numeric@1.2.6/numeric-1.2.6.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/stats.js@0.17.0/build/stats.min.js"></script>
+    <script type="importmap">
+        {
+            "imports": {
+              "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+              "three/": "https://unpkg.com/three@0.160.0/"
+            }
+        }
+    </script>
+</head>
+<body>
+<script type="module">
+    import {ThreeEngine} from "../js/utils/utils_three.js";
+
+    // todo: create a visualization that demonstrates your knowledge of displacement-based
+    // todo: distance over SE(3).  Note that this will use your logarithm solution from PS_U3,
+    // todo: so you must finish that prior to starting this problem.
+    // todo: Feel free to make this visualization as creative as you want, or, conversely,
+    // todo: feel free to create a visualization like the one here
+    // todo: https://yale-cpsc-487-587-internal-djrakita-c95fa6c3239a481a48d29a6b0fd.gitlab.io/html/visualizations/SE2_distance2.html
+    // todo: though applied to 3D rotations + translations instead of 2D rotations + translations.
+    // todo: Feel free to use the 3x3 matrix inverse function provided by me below if you want.
+
+    // A must be a 3x3 matrix in row major order
+    // [[a11, a12, a13], [a21, a22, a23], [a31, a32, a33]]
+    function matrix_inverse_3x3(A) {
+        let det = A[0][0] * (A[1][1] * A[2][2] - A[2][1] * A[1][2]) -
+            A[0][1] * (A[1][0] * A[2][2] - A[1][2] * A[2][0]) +
+            A[0][2] * (A[1][0] * A[2][1] - A[1][1] * A[2][0]);
+
+        if (det === 0) {
+            return null; // No inverse exists if determinant is 0
+        }
+
+        let cofactors = [
+            [
+                (A[1][1] * A[2][2] - A[2][1] * A[1][2]),
+                -(A[1][0] * A[2][2] - A[1][2] * A[2][0]),
+                (A[1][0] * A[2][1] - A[2][0] * A[1][1])
+            ],
+            [
+                -(A[0][1] * A[2][2] - A[0][2] * A[2][1]),
+                (A[0][0] * A[2][2] - A[0][2] * A[2][0]),
+                -(A[0][0] * A[2][1] - A[2][0] * A[0][1])
+            ],
+            [
+                (A[0][1] * A[1][2] - A[0][2] * A[1][1]),
+                -(A[0][0] * A[1][2] - A[1][0] * A[0][2]),
+                (A[0][0] * A[1][1] - A[1][0] * A[0][1])
+            ]
+        ];
+
+        let adjugate = [
+            [cofactors[0][0] / det, cofactors[1][0] / det, cofactors[2][0] / det],
+            [cofactors[0][1] / det, cofactors[1][1] / det, cofactors[2][1] / det],
+            [cofactors[0][2] / det, cofactors[1][2] / det, cofactors[2][2] / det]
+        ];
+
+        return adjugate;
+    }
+
+
+
+</script>
+</body>
+</html>
