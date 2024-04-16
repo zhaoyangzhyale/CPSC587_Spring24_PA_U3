@@ -522,6 +522,41 @@ export class ThreeEngine {
 
     }
 
+    draw_debug_number_line(center_point, span_vec_1=[[0], [0], [1]], half_length=1, width=0.01, color=0x222222, tick_dis=0.1) {
+        let span_vec_normalized = normalized_matrix(span_vec_1);
+        let span_vec_scaled1 = mul_matrix_scalar(span_vec_normalized, half_length);
+        let span_vec_scaled2 = mul_matrix_scalar(span_vec_normalized, -half_length);
+        this.draw_debug_line(center_point, add_matrix_matrix(center_point, span_vec_scaled1), undefined, width, color);
+        this.draw_debug_line(center_point, add_matrix_matrix(center_point, span_vec_scaled2), undefined, width, color);
+
+        this.draw_debug_sphere(center_point, width*2.2, color);
+
+        let dis = tick_dis;
+        while (dis < half_length) {
+            let span_vec_scaled1 = mul_matrix_scalar(span_vec_normalized, dis);
+            let span_vec_scaled2 = mul_matrix_scalar(span_vec_normalized, -dis);
+
+            this.draw_debug_sphere(add_matrix_matrix(center_point, span_vec_scaled1), width*1.6, color);
+            this.draw_debug_sphere(add_matrix_matrix(center_point, span_vec_scaled2), width*1.6, color);
+
+            dis += tick_dis;
+        }
+    }
+
+    draw_debug_scalar_vector_quaternion(quaternion, vector_color=0x222222, number_line_span_vec_1=[[0], [0], [1]],  number_line_width=0.01, number_line_color=0x222222, tick_dis=0.1, opacity=1.0, tail_width = 0.04) {
+        this.draw_debug_vector([0,0,0], quaternion[1], tail_width, undefined, vector_color, opacity);
+        this.draw_debug_number_line(quaternion[1], number_line_span_vec_1, Math.max(Math.abs(quaternion[0])*1.2, 0.3), number_line_width, number_line_color, tick_dis);
+
+        let span_vec_normalized = normalized_matrix(number_line_span_vec_1);
+        let span_vec_scaled1 = mul_matrix_scalar(span_vec_normalized, quaternion[0]);
+        this.draw_debug_sphere(add_matrix_matrix(quaternion[1], span_vec_scaled1), 0.04, vector_color);
+    }
+
+    draw_debug_wxyz_quaternion(quaternion, vector_color=0x222222, number_line_span_vec_1=[[0], [0], [1]],  number_line_width=0.01, number_line_color=0x222222, tick_dis=0.1, opacity=1.0, tail_width = 0.04) {
+        let q = [quaternion[0], [quaternion[1], quaternion[2], quaternion[3]]];
+        this.draw_debug_scalar_vector_quaternion(q, vector_color, number_line_span_vec_1, number_line_width, number_line_color, tick_dis, opacity, tail_width);
+    }
+
     spawn_parametric_geometry(parametric_geometry_object, slices=100, stacks=100, color=0x0000ff, opacity=1.0) {
         let geometry = new ParametricGeometry(parametric_geometry_object.get_three_parametric_function(), 200, 200);
 
@@ -586,45 +621,45 @@ export class ThreeEngine {
         mesh_object.geometry.computeVertexNormals();
     }
 
-    /*
+    
     update_vertex_position_in_mesh_object(mesh_idx, vertex_idx, new_position) {
-    let mesh = this.mesh_objects[mesh_idx];
-    let wireframe_mesh = this.mesh_object_wireframes[mesh_idx];
+        let mesh = this.mesh_objects[mesh_idx];
+        let wireframe_mesh = this.mesh_object_wireframes[mesh_idx];
 
-    this.#update_vertex_position_in_mesh_object(mesh, vertex_idx, new_position);
-    // this.#update_vertex_position_in_mesh_object(wireframe_mesh, vertex_idx, new_position);
-}
-
-#update_vertex_position_in_mesh_object(mesh, vertex_idx, new_position) {
-    // let a = convert_z_up_array_to_y_up_array(new_position);
-    let a = new_position;
-
-    let positionAttribute = mesh.geometry.attributes.position;
-    let start_idx = vertex_idx * 3;
-    positionAttribute.array[start_idx] = a[0];
-    positionAttribute.array[start_idx + 1] = a[1];
-    if (a.length > 2) {
-        positionAttribute.array[start_idx + 2] = a[2];
+        this.#update_vertex_position_in_mesh_object(mesh, vertex_idx, new_position);
+        // this.#update_vertex_position_in_mesh_object(wireframe_mesh, vertex_idx, new_position);
     }
-    console.log(positionAttribute.array);
-    positionAttribute.needsUpdate = true;
-}
 
-#update_vertex_position_in_mesh_object2(mesh, vertex_idx, new_position) {
-    // let a = convert_z_up_array_to_y_up_array(new_position);
-    let a = new_position;
+    #update_vertex_position_in_mesh_object(mesh, vertex_idx, new_position) {
+        // let a = convert_z_up_array_to_y_up_array(new_position);
+        let a = new_position;
 
-    let positionAttribute = mesh.geometry.attributes.position;
-    let start_idx = vertex_idx * 3;
-    positionAttribute.array[start_idx] = a[0];
-    positionAttribute.array[start_idx + 1] = a[1];
-    if (a.length > 2) {
-        positionAttribute.array[start_idx + 2] = a[2];
+        let positionAttribute = mesh.geometry.attributes.position;
+        let start_idx = vertex_idx * 3;
+        positionAttribute.array[start_idx] = a[0];
+        positionAttribute.array[start_idx + 1] = a[1];
+        if (a.length > 2) {
+            positionAttribute.array[start_idx + 2] = a[2];
+        }
+        console.log(positionAttribute.array);
+        positionAttribute.needsUpdate = true;
     }
-    console.log(positionAttribute.array);
-    positionAttribute.needsUpdate = true;
-}
-*/
+
+    #update_vertex_position_in_mesh_object2(mesh, vertex_idx, new_position) {
+        // let a = convert_z_up_array_to_y_up_array(new_position);
+        let a = new_position;
+
+        let positionAttribute = mesh.geometry.attributes.position;
+        let start_idx = vertex_idx * 3;
+        positionAttribute.array[start_idx] = a[0];
+        positionAttribute.array[start_idx + 1] = a[1];
+        if (a.length > 2) {
+            positionAttribute.array[start_idx + 2] = a[2];
+        }
+        console.log(positionAttribute.array);
+        positionAttribute.needsUpdate = true;
+    }
+
 
     get_time_elapsed() {
         return this.clock.getElapsedTime()

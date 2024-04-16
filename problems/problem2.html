@@ -20,11 +20,105 @@
 </head>
 <body>
 <script type="module">
-    import {get_default_lil_gui, ThreeEngine, refresh_displays} from "../js/utils/utils_three.js";
-
     // todo: create a visualization that demonstrates your knowledge of quaternions.  This is intentionally
     // todo: open-ended.  Be as creative as you want, or feel free to recreate any of the visualizations
     // todo: found in Section 3.3.
+
+    import {ThreeEngine} from "../../js/utils/utils_three.js";
+    import {get_default_lil_gui} from "../../js/utils/utils_three.js";
+    import {refresh_displays} from "../../js/utils/utils_three.js";
+    import {frobenius_norm_matrix} from "../../js/utils/utils_math.js";
+
+
+    function mul_quaternions(q1, q2) {
+        let w1 = q1[0];
+        let x1 = q1[1];
+        let y1 = q1[2];
+        let z1 = q1[3];
+
+        let w2 = q2[0];
+        let x2 = q2[1];
+        let y2 = q2[2];
+        let z2 = q2[3];
+
+        let w = w1 * w2 - x1 * x2 - y1 * y2 - z1 * z2;
+        let x = w1 * x2 + x1 * w2 + y1 * z2 - z1 * y2;
+        let y = w1 * y2 - x1 * z2 + y1 * w2 + z1 * x2;
+        let z = w1 * z2 + x1 * y2 - y1 * x2 + z1 * w2;
+
+        return [w, x, y, z];
+    }
+
+    let engine = ThreeEngine.new_default_3d();
+    let gui = get_default_lil_gui();
+
+    let settings = {
+        theta1: 0,
+        theta2: 0,
+        theta3: 0,
+        w: 1,
+        x: 0,
+        y: 0,
+        z: 0,
+        norm: 1
+    }
+
+    let actions = {
+        reset: () => {
+            settings.theta1 = 0;
+            settings.theta2 = 0;
+            settings.theta3 = 0;
+            refresh_displays(gui);
+        }
+    }
+
+    gui.add(settings, 'theta1', -3.14, 3.14);
+    gui.add(settings, 'theta2', -3.14, 3.14);
+    gui.add(settings, 'theta3', -3.14, 3.14);
+    gui.add(settings, 'w', -2, 2).disable();
+    gui.add(settings, 'x', -2, 2).disable();
+    gui.add(settings, 'y', -2, 2).disable();
+    gui.add(settings, 'z', -2, 2).disable();
+    gui.add(settings, 'norm').disable();
+    gui.add(actions, 'reset');
+
+    engine.add_suzanne_monkey_as_mesh_object(0x00eeff);
+    engine.toggle_mesh_object_visibility(0);
+
+    let points = engine.get_local_vertex_positions_of_mesh_object_wireframe(0);
+
+    engine.animation_loop(function() {
+
+        engine.set_mesh_object_wireframe_visibility(0, true);
+
+        let qx = [Math.cos(settings.theta1), Math.sin(settings.theta1), 0, 0];
+        let qy = [Math.cos(settings.theta2), 0, Math.sin(settings.theta2), 0];
+        let qz = [Math.cos(settings.theta3), 0, 0, Math.sin(settings.theta3)];
+        let qm = mul_quaternions(mul_quaternions(qx, qy), qz);
+        let qm_conj = [qm[0], -qm[1], -qm[2], -qm[3]];
+
+        settings.w = qm[0];
+        settings.x = qm[1];
+        settings.y = qm[2];
+        settings.z = qm[3];
+        settings.norm = frobenius_norm_matrix(qm);
+
+        let transformed_points = [];
+
+        for (let i = 0; i < points.length; i++) {
+            let p = [0, points[i][0], points[i][1], points[i][2]];
+            let transformed_quat = mul_quaternions(mul_quaternions(qm, p), qm_conj);
+            let transformed_point = [transformed_quat[1], transformed_quat[2], transformed_quat[3]];
+            if (i % 10 == 0) {
+                engine.draw_debug_wxyz_quaternion(transformed_quat, 0x9999ff, undefined, undefined, undefined, 0.5, 0.5, 0.01);
+            }
+            transformed_points.push(transformed_point);
+        }
+        engine.update_vertex_positions_of_mesh_object_wireframe(0, transformed_points);
+
+        refresh_displays(gui);
+
+    });
 
 </script>
 </body>
